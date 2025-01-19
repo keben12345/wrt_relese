@@ -202,9 +202,13 @@ fix_mk_def_depends() {
 }
 
 add_wifi_default_set() {
-    local ipq_uci_dir="$BUILD_DIR/target/linux/qualcommax/ipq60xx/base-files/etc/uci-defaults"
-    if [ -d "$ipq_uci_dir" ]; then
-        install -Dm755 "$BASE_PATH/patches/992_set-wifi-uci.sh" "$ipq_uci_dir/992_set-wifi-uci.sh"
+    local ipq60xx_uci_dir="$BUILD_DIR/target/linux/qualcommax/ipq60xx/base-files/etc/uci-defaults"
+    local ipq807x_uci_dir="$BUILD_DIR/target/linux/qualcommax/ipq807x/base-files/etc/uci-defaults"
+    if [ -d "$ipq60xx_uci_dir" ]; then
+        install -Dm755 "$BASE_PATH/patches/992_set-wifi-uci.sh" "$ipq60xx_uci_dir/992_set-wifi-uci.sh"
+    fi
+    if [ -d "$ipq807x_uci_dir" ]; then
+        install -Dm755 "$BASE_PATH/patches/992_set-wifi-uci.sh" "$ipq807x_uci_dir/992_set-wifi-uci.sh"
     fi
 }
 
@@ -325,6 +329,7 @@ chanage_cpuusage() {
     fi
 
     install -Dm755 "$BASE_PATH/patches/cpuusage" "$BUILD_DIR/target/linux/qualcommax/ipq60xx/base-files/sbin/cpuusage"
+    install -Dm755 "$BASE_PATH/patches/cpuusage" "$BUILD_DIR/target/linux/qualcommax/ipq807x/base-files/sbin/cpuusage"
 }
 
 update_tcping() {
@@ -382,11 +387,23 @@ update_pw_ha_chk() {
     local pw_ha_path="$pw_share_dir/haproxy_check.sh"
     local ha_lua_path="$pw_share_dir/haproxy.lua"
     local smartdns_lua_path="$pw_share_dir/helper_smartdns_add.lua"
+    local rules_dir="$pw_share_dir/rules"
 
+    # 删除旧的 haproxy_check.sh 文件并安装新的
     [ -f "$pw_ha_path" ] && rm -f "$pw_ha_path"
     install -Dm755 "$new_path" "$pw_ha_path"
+
+    # 修改 haproxy.lua 文件中的 rise 和 fall 参数
     [ -f "$ha_lua_path" ] && sed -i 's/rise 1 fall 3/rise 3 fall 2/g' "$ha_lua_path"
+
+    # 删除 helper_smartdns_add.lua 文件中的特定行
     [ -f "$smartdns_lua_path" ] && sed -i '/force-qtype-SOA 65/d' "$smartdns_lua_path"
+
+    # 从 chnlist 文件中删除特定的域名
+    sed -i '/\.bing\./d' "$rules_dir/chnlist"
+    sed -i '/microsoft/d' "$rules_dir/chnlist"
+    sed -i '/msedge/d' "$rules_dir/chnlist"
+    sed -i '/github/d' "$rules_dir/chnlist"
 }
 
 install_opkg_distfeeds() {
@@ -487,7 +504,7 @@ main() {
     remove_affinity_script
     fix_build_for_openssl
     update_ath11k_fw
-    fix_mkpkg_format_invalid
+    # fix_mkpkg_format_invalid
     chanage_cpuusage
     update_tcping
     add_wg_chk
